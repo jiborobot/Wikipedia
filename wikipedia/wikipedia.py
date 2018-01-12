@@ -353,7 +353,7 @@ class WikipediaPage(object):
     page = query['pages'][pageid]
     self.summary = page.get('extract')
     self.categories = []
-    for link in page.get('categories'):
+    for link in page.get('categories', []):
       self.categories.append(re.sub(r'^Category:', '', link['title']))
 
     # missing is present if the page is missing
