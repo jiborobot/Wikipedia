@@ -303,7 +303,8 @@ class WikipediaPage(object):
       self.pageid = pageid
     else:
       raise ValueError("Either a title or a pageid must be specified")
-
+    self.summary = "test_summary"
+    self.categories = ["test_categories1", "test_categories2"]
     self.__load(redirect=redirect, preload=preload)
 
     if preload:
@@ -331,7 +332,11 @@ class WikipediaPage(object):
     Does not need to be called manually, should be called automatically during __init__.
     '''
     query_params = {
-      'prop': 'info|pageprops',
+      'prop': 'info|pageprops|extracts|categories',
+      'cllimit': 'max',
+      'explaintext': '',
+      'exintro': '',
+      'list': 'allcategories',
       'inprop': 'url',
       'ppprop': 'disambiguation',
       'redirects': '',
@@ -346,6 +351,10 @@ class WikipediaPage(object):
     query = request['query']
     pageid = list(query['pages'].keys())[0]
     page = query['pages'][pageid]
+    self.summary = page.get('extract')
+    self.categories = []
+    for link in page.get('categories', []):
+      self.categories.append(re.sub(r'^Category:', '', link['title']))
 
     # missing is present if the page is missing
     if 'missing' in page:
@@ -519,28 +528,6 @@ class WikipediaPage(object):
     return self._parent_id
 
   @property
-  def summary(self):
-    '''
-    Plain text summary of the page.
-    '''
-
-    if not getattr(self, '_summary', False):
-      query_params = {
-        'prop': 'extracts',
-        'explaintext': '',
-        'exintro': '',
-      }
-      if not getattr(self, 'title', None) is None:
-         query_params['titles'] = self.title
-      else:
-         query_params['pageids'] = self.pageid
-
-      request = _wiki_request(query_params)
-      self._summary = request['query']['pages'][self.pageid]['extract']
-
-    return self._summary
-
-  @property
   def images(self):
     '''
     List of URLs of images on the page.
@@ -623,22 +610,6 @@ class WikipediaPage(object):
 
     return self._links
 
-  @property
-  def categories(self):
-    '''
-    List of categories of a page.
-    '''
-
-    if not getattr(self, '_categories', False):
-      self._categories = [re.sub(r'^Category:', '', x) for x in
-        [link['title']
-        for link in self.__continued_query({
-          'prop': 'categories',
-          'cllimit': 'max'
-        })
-      ]]
-
-    return self._categories
 
   @property
   def sections(self):
